@@ -1,1 +1,1 @@
-sudo apt update && sudo apt install ffuf gobuster whois nmap nikto sublist3r wpscan dirb
+requests
