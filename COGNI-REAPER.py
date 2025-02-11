@@ -6,17 +6,21 @@ import re
 import socket
 from threading import Thread, Event
 
-# Discord webhook URL
+# Discord webhook URL (substitua pelo seu webhook real)
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/your-webhook-id"
 
 # Banner
 BANNER = """
-██████╗ ███████╗███╗   ██╗████████╗███████╗███████╗███████╗
-██╔══██╗██╔════╝████╗  ██║╚══██╔══╝██╔════╝██╔════╝██╔════╝
-██████╔╝█████╗  ██╔██╗ ██║   ██║   █████╗  █████╗  █████╗  
-██╔═══╝ ██╔══╝  ██║╚██╗██║   ██║   ██╔══╝  ██╔══╝  ██╔══╝  
-██║     ███████╗██║ ╚████║   ██║   ███████╗███████╗███████╗
-╚═╝     ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚══════╝╚══════╝
+ ▄████▄   ▒█████    ▄████  ███▄    █  ██▓
+▒██▀ ▀█  ▒██▒  ██▒ ██▒ ▀█▒ ██ ▀█   █ ▓██▒
+▒▓█    ▄ ▒██░  ██▒▒██░▄▄▄░▓██  ▀█ ██▒▒██▒
+▒▓▓▄ ▄██▒▒██   ██░░▓█  ██▓▓██▒  ▐▌██▒░██░
+▒ ▓███▀ ░░ ████▓▒░░▒▓███▀▒▒██░   ▓██░░██░
+░ ░▒ ▒  ░░ ▒░▒░▒░  ░▒   ▒ ░ ▒░   ▒ ▒ ░▓  
+  ░  ▒     ░ ▒ ▒░   ░   ░ ░ ░░   ░ ▒░ ▒ ░
+░        ░ ░ ░ ▒  ░ ░   ░    ░   ░ ░  ▒ ░
+░ ░          ░ ░        ░          ░  ░  
+░                                        
 """
 
 # Print banner
@@ -35,7 +39,7 @@ def loading_animation():
             print(f"\rPentesting... {frame}", end="", flush=True)
             time.sleep(0.1)
 
-# Run command
+# Run command with subprocess
 def run_command(command, description):
     try:
         print(f"\n[+] Running {description}...")
@@ -50,6 +54,10 @@ def run_nmap(target): return run_command(["nmap", "-A", target], "Nmap")
 def run_gobuster(target): return run_command(["gobuster", "dir", "-u", target, "-w", "/usr/share/wordlists/dirb/common.txt"], "Gobuster")
 def run_nikto(target): return run_command(["nikto", "-h", target], "Nikto")
 def run_ffuf(target): return run_command(["ffuf", "-u", f"{target}/FUZZ", "-w", "/usr/share/wordlists/dirb/common.txt", "-c"], "FFUF")
+def run_sqlmap(target): return run_command(["sqlmap", "-u", target, "--batch", "--level=5", "--risk=3"], "SQLMap")
+def run_hydra(target): return run_command(["hydra", "-L", "users.txt", "-P", "passwords.txt", target, "ssh"], "Hydra (Brute Force)")
+def run_whatweb(target): return run_command(["whatweb", target], "WhatWeb")
+def run_xsstrike(target): return run_command(["xsstrike", "-u", target], "XSStrike (XSS Scanner)")
 
 # Validate target
 def validate_target(target):
@@ -73,21 +81,27 @@ def validate_target(target):
         return "URL"
     return None
 
-# Send results to Discord
+# Send results to Discord asynchronously
 def send_to_discord(report):
-    try:
-        print("\n[+] Sending report to Discord...")
-        data = {"content": f"```\n{report}\n```"}
-        response = requests.post(DISCORD_WEBHOOK_URL, json=data)
-        print("[+] Report sent!" if response.status_code == 204 else f"[-] Failed to send report. HTTP {response.status_code}")
-    except Exception as e:
-        print(f"[-] Error sending report: {e}")
+    def _send():
+        try:
+            print("\n[+] Sending report to Discord...")
+            data = {"content": f"```\n{report}\n```"}
+            response = requests.post(DISCORD_WEBHOOK_URL, json=data)
+            print("[+] Report sent!" if response.status_code == 204 else f"[-] Failed to send report. HTTP {response.status_code}")
+        except Exception as e:
+            print(f"[-] Error sending report: {e}")
+
+    Thread(target=_send).start()
 
 # Run pentest in parallel
 def pentest(target):
     print("[+] Starting pentesting...")
 
-    tools = [run_whois, run_nmap, run_gobuster, run_nikto, run_ffuf]
+    tools = [
+        run_whois, run_nmap, run_gobuster, run_nikto, 
+        run_ffuf, run_sqlmap, run_hydra, run_whatweb, run_xsstrike
+    ]
     threads = []
     results = []
 
